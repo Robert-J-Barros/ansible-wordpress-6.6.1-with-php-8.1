@@ -1,0 +1,75 @@
+- hosts: all
+  become: true
+  vars_files:
+    - vars/default.yml
+  ### PHP
+  tasks:
+    - name: apt-get update
+      ansible.builtin.apt:
+        update_cache: yes
+    
+    - name: Install LAMP Packages
+      apt: name={{ item }} update_cache=yes state=latest
+      loop: [ 'apache2', 'php8.1', 'php8.1-fpm', 'php8.1-mysql', 'libapache2-mod-php' ]
+      tags: [ system ]
+    
+    - name: Install PHP Extensions
+      apt: name={{ item }} update_cache=yes state=latest
+      loop: "{{ php_modules }}"
+      tags: [ system ]
+
+    ### APACHE2      
+    - name: Create document root
+      file:
+        path: "/var/www/{{ file_http_host }}"
+        state: directory
+        owner: "www-data"
+        group: "www-data"
+        mode: '0755'
+      tags: [ apache ]
+
+    - name: Up a virtual host
+      template:
+        src: "files/apache2.conf"
+        dest: "/etc/apache2/sites-enabled/"
+      tags: [ apache ]
+
+    - name: enable PHP module on Apache
+      ansible.builtin.command:
+        cmd: "a2enmod php8.1"
+
+    - name: enable PHP-FPM on Apache
+      ansible.builtin.command:
+        cmd: "a2enconf php8.1-fpm"
+
+    ##WORDPRESS
+    - name: Ensure the target directory exists
+      ansible.builtin.file:
+        path: "/var/www/{{ file_http_host }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      tags: [ wordpress ]
+    - name: Download and unpack latest WordPress
+      unarchive:
+        src: https://br.wordpress.org/wordpress-6.6.1-pt_BR.tar.gz
+        dest: "/var/www/{{ file_http_host }}"
+        remote_src: yes
+        creates: "/var/www/{{ file_http_host }}/wordpress"
+      tags: [ wordpress ]    
+    - name: Set permissions for files and directories
+      ansible.builtin.file:
+        path: "/var/www/{{ file_http_host }}/wordpress"
+        state: directory
+        recurse: yes
+        owner: www-data
+        group: www-data
+      tags: [ wordpress ]
+
+
+    - name: Set up wp-config
+      template:
+        src: "files/wp-config.php"
+        dest: "/var/www/{{ file_http_host }}/wordpress/wp-config.php"
+      tags: [ wordpress ]
