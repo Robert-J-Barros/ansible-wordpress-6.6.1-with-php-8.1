@@ -1,4 +1,4 @@
 fpv:
   hosts:
     tcm:
-      ansible_host: 54.233.37.173
+      ansible_host: your_ip

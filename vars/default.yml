@@ -1,15 +1,15 @@
 mysql_root_password: "mysql_root_password"
-mysql_db: "wordpress"
-mysql_user: "sammy"
-mysql_password: "password"
-mysql_host:
+mysql_db: "mysql_db"
+mysql_user: "mysql_user"
+mysql_password: "mysql_password"
+mysql_host: "mysql_host"
 
 # PHP Settings
 php_version:  "8.1"
 wp_version: "6.6.1"
 php_modules: [ 'php8.1-curl', 'php8.1-gd', 'php8.1-mbstring', 'php8.1-xml', 'php8.1-xmlrpc', 'php8.1-soap', 'php8.1-intl', 'php8.1-zip' ]
 #HTTP Settings
-file_http_host: "ansible"
-http_host: "ansible.tardecommaria.com.br"
-http_conf: "ansible.conf"
+file_http_host: "file_path_name"
+http_host: "domain"
+http_conf: "your_domain.conf"
 http_port: "80"
