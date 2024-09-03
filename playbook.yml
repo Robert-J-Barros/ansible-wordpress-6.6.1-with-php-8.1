@@ -7,31 +7,34 @@
     - name: apt-get update
       ansible.builtin.apt:
         update_cache: yes
-    
+
     - name: Install LAMP Packages
       apt: name={{ item }} update_cache=yes state=latest
       loop: [ 'apache2', 'php8.1', 'php8.1-fpm', 'php8.1-mysql', 'libapache2-mod-php' ]
       tags: [ system ]
-    
+
     - name: Install PHP Extensions
       apt: name={{ item }} update_cache=yes state=latest
-      loop: "{{ php_modules }}"
+      loop:
+        - "{{ php_modules }}"
       tags: [ system ]
 
-    ### APACHE2      
+    ### APACHE2
     - name: Create document root
       file:
-        path: "/var/www/{{ file_http_host }}"
+        path: "/var/www/{{ item }}"
         state: directory
         owner: "www-data"
         group: "www-data"
         mode: '0755'
+      with_items: "{{ file_http_host }}"
       tags: [ apache ]
 
     - name: Up a virtual host
       template:
         src: "files/apache2.conf"
-        dest: "/etc/apache2/sites-enabled/"
+        dest: "/etc/apache2/sites-enabled/{{ item.file_http_host }}.conf"
+      with_items: "{{ sites }}"
       tags: [ apache ]
 
     - name: enable PHP module on Apache
@@ -42,34 +45,53 @@
       ansible.builtin.command:
         cmd: "a2enconf php8.1-fpm"
 
-    ##WORDPRESS
+    #WORDPRESS
     - name: Ensure the target directory exists
       ansible.builtin.file:
-        path: "/var/www/{{ file_http_host }}"
+        path: "/var/www/{{ item }}"
         state: directory
         owner: www-data
         group: www-data
         mode: '0755'
+      loop:  "{{ file_http_host }}"
       tags: [ wordpress ]
     - name: Download and unpack latest WordPress
       unarchive:
         src: https://br.wordpress.org/wordpress-6.6.1-pt_BR.tar.gz
-        dest: "/var/www/{{ file_http_host }}"
+        dest: "/var/www/{{ item }}"
         remote_src: yes
-        creates: "/var/www/{{ file_http_host }}/wordpress"
-      tags: [ wordpress ]    
+        creates: "/var/www/{{ item }}/wordpress"
+      with_items: "{{ file_http_host }}"
+      tags: [ wordpress ]
+
     - name: Set permissions for files and directories
       ansible.builtin.file:
-        path: "/var/www/{{ file_http_host }}/wordpress"
+        path: "/var/www/{{ item }}/wordpress"
         state: directory
         recurse: yes
         owner: www-data
         group: www-data
+      loop: "{{ file_http_host }}"
       tags: [ wordpress ]
 
 
     - name: Set up wp-config
       template:
         src: "files/wp-config.php"
-        dest: "/var/www/{{ file_http_host }}/wordpress/wp-config.php"
+        dest: "/var/www/{{ item.file_http_host }}/wordpress/wp-config.php"
+      with_items: "{{ database }}" 
       tags: [ wordpress ]
+
+    - name: Ativar o módulo PHP 8.1
+      command: a2enmod php8.1
+
+    - name: Ativar os módulos proxy_fcgi e setenvif
+      command: a2enmod proxy_fcgi setenvif
+
+    - name: Ativar a configuração php8.1-fpm
+      command: a2enconf php8.1-fpm
+
+    - name: Restart Apache service
+      service:
+        name: apache2  
+        state: restarted
